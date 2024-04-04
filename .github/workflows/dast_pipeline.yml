@@ -1,33 +1,27 @@
-name: DAST Pipeline
-
+name: DAST Scan
 on:
-  push:
-    branches:
-      - main
-  pull_request:
-    branches:
-      - main
+  workflow_dispatch: 
+    inputs:
+      image-tag:
+        type: string
+        description: 'The name of the Docker image to scan'
+        required: true
+
 jobs:
-  dast_scan:
-    name: OWASP ZAP DAST Scan
+  dast-scan:
+    name: DAST Scan
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v2
 
-      - name: Run OWASP ZAP DAST Scan
-        uses: zaproxy/action-baseline@v0.4.0
+      - name: Run ZAP OWASP full scan
+        id: zap-scan
+        uses: zaproxy/action-full-scan@v0.4.0
         with:
-          target: 'http://testphp.vulnweb.com/'
-
-      - name: Generate ZAP Report
-        run: |
-          docker run --rm -v ${PWD}:/zap/wrk/:rw -t owasp/zap2docker-stable zap-full-scan.py -t http://testphp.vulnweb.com/ -r zap-report.html
-
-      - name: Upload ZAP Report
-        uses: actions/upload-artifact@v2
-        with:
-          name: zap-report
-          path: zap-report.html
-
+          docker_name: 'owasp/zap2docker-stable'
+          token: ${{ secrets.GITHUB_TOKEN }}
+          target: ${{ github.event.inputs.image-tag }}
+          cmd_options: '-a -j -l WARN -z "-addoninstallall" '
+          allow_issue_writing: true
